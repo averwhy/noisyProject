@@ -1,8 +1,10 @@
-# React + Vite
+![version](https://img.shields.io/github/package-json/v/averwhy/noisyProject?style=flat-square)
+![react](https://img.shields.io/npm/v/react?color=61dbfb&label=react&style=flat-square)
+![updated](https://img.shields.io/github/last-commit/averwhy/noisyProject?style=flat-square)
+![commits](https://img.shields.io/github/commit-activity/w/averwhy/noisyProject?color=gree&style=flat-square)
+![stars](https://img.shields.io/github/stars/averwhy/noisyProject?color=gold&style=flat-square)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# [noisyProject](https://averwhy.github.io/noisyProject)
+MAT-239 project about sending and recieving 10-bit signals through a noisy filter
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Click the title to visit the site!
