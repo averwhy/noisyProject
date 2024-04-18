@@ -1,12 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import Main from './pages/main';
-import reportWebVitals from './reportWebVitals';
 import 'bootstrap/dist/css/bootstrap.css';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import About from './pages/about';
 import NotFound from './pages/notfound';
+import Main from './pages/main';
 
 export default function App(){
   return (
@@ -22,6 +21,5 @@ export default function App(){
   );
 }
 
-reportWebVitals();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(<App/>);
