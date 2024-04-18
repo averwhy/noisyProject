@@ -7,6 +7,10 @@ class noisyChannel{
     constructor(percentage){
         this.percentage = percentage;
     }
+
+    passthrough(message){
+        // garble message based on percentage
+    }
 }
 
 class Channel{
@@ -15,33 +19,37 @@ class Channel{
     }
 
     checksum(msg){
-        var sum = 0;
-        for (var i = 0; v < this.bits-2; i++){
-            sum += parseInt(msg[i]);
+        var checksum = msg[0]; // Initialize checksum with the first bit
+        // XOR the checksum with each subsequent bit
+        for (var i = 1; i < msg.length; i++) {
+            checksum  ^= msg[i];
         }
-        return sum % 2;
+        return checksum;
     }
 
     createMessage(){
         var dataAmount = this.bits - 2;
-        var message = "";
-        for (let i = 0; i <= dataAmount; i++){
-            
+        var message = [];
+        for (var i = 0; i < dataAmount; i++){
+            message.push(Math.round(Math.random()))
         }
-        return message + "0"; // add ack digit and checksum digit(?)
+        message.push(this.checksum(message))
+        message.push(0)
+        console.log(message);
+        return message;
     }
 }
 
 function Simulator(){
-    const channel1 = Channel(10);
-    const channel2 = Channel(10);
-    const noise = noisyChannel(); // TODO: pass user given percentage in
+    const channel1 = new Channel(10);
+    const channel2 = new Channel(10);
+    const noise = new noisyChannel(); // TODO: pass user given percentage in
     
     return (
         <div>
             <Container fluid>
                 <Row>
-                    <Col>WIP ({new Channel(10).createMessage()})</Col>
+                    <Col>WIP ({new Channel(10).createMessage().toString()})</Col>
                 </Row>
             </Container>
         </div>
