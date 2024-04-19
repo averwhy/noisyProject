@@ -14,14 +14,16 @@ class noisyChannel{
 }
 
 class Channel{
-    constructor(bits){
-        this.bits = bits;
-        this.message = [];
-    }
-
     checksum(msg){
         let sum = msg.reduce((acc, bit) => acc + bit, 0); // Sum all bits in the data
         return sum % 10;
+    }
+}
+
+class Transmitter extends Channel{
+    constructor(bits){
+        this.bits = bits;
+        this.message = null;
     }
 
     createMessage(){
@@ -32,17 +34,38 @@ class Channel{
         }
         message.push(this.checksum(message))
         message.push(0)
-        console.log(message);
+        this.message = message;
+    }
+}
+
+class Receiver extends Channel{
+    constructor(){
+    }
+
+    returnMessage(message){
+        message[9] = 1; // Flip ack digit
+        message[8] = this.checksum(this.recievedMsg[0, 7]);
         return message;
     }
 }
 
+
 class ChannelSimulator{
-    constructor(tx, rx, noise){
-        // const channel1 = new Channel(10);
-        // const channel2 = new Channel(10);
-        // const noise = new noisyChannel(); // TODO: pass user given percentage in
-        // var progress = 20;
+    constructor(tx, rx, noise, iterations){
+        this.tx = tx;
+        this.rx = rx;
+        this.noise = noise;
+        this.iterations;
+    }
+
+    simulate(){
+        for (var t=0; t>this.iterations; t++){
+            this.tx.createMessage();
+            var garbled = this.noise.passthrough(this.tx.message);
+            var returned = this.rx.returnMessage(garbled);
+            var garbled = this.noise.passthrough(returned);
+            // eval
+        }
     }
 }
 
