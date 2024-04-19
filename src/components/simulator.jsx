@@ -1,7 +1,7 @@
-import Container from 'react-bootstrap/Container';
-//import ProgressBar from 'react-bootstrap/ProgressBar';
-import Row from 'react-bootstrap/Row';
-import Col from 'react-bootstrap/Col';
+import Modal from 'react-bootstrap/Modal';
+import Button from 'react-bootstrap/Button';
+import { ProgressBar } from 'react-bootstrap';
+import { useState } from 'react';
 
 class noisyChannel{
     constructor(percentage){
@@ -16,15 +16,12 @@ class noisyChannel{
 class Channel{
     constructor(bits){
         this.bits = bits;
+        this.message = [];
     }
 
     checksum(msg){
-        var checksum = msg[0]; // Initialize checksum with the first bit
-        // XOR the checksum with each subsequent bit
-        for (var i = 1; i < msg.length; i++) {
-            checksum  ^= msg[i];
-        }
-        return checksum;
+        let sum = msg.reduce((acc, bit) => acc + bit, 0); // Sum all bits in the data
+        return sum % 10;
     }
 
     createMessage(){
@@ -40,19 +37,54 @@ class Channel{
     }
 }
 
-function Simulator(){
-    const channel1 = new Channel(10);
-    const channel2 = new Channel(10);
-    const noise = new noisyChannel(); // TODO: pass user given percentage in
-    
+class ChannelSimulator{
+    constructor(tx, rx, noise){
+        // const channel1 = new Channel(10);
+        // const channel2 = new Channel(10);
+        // const noise = new noisyChannel(); // TODO: pass user given percentage in
+        // var progress = 20;
+    }
+}
+
+function SimModal(props) {
     return (
-        <div>
-            <Container fluid>
-                <Row>
-                    <Col>WIP ({new Channel(10).createMessage().toString()})</Col>
-                </Row>
-            </Container>
-        </div>
+      <Modal
+        {...props}
+        data-bs-theme="dark"
+        size="xl"
+        aria-labelledby="contained-modal-title-vcenter"
+        centered
+      >
+        <Modal.Header closeButton data-bs-theme="dark">
+          <Modal.Title id="contained-modal-title-vcenter" data-bs-theme="dark">
+            Simulator
+          </Modal.Title>
+        </Modal.Header>
+        <Modal.Body data-bs-theme="dark">
+            <ProgressBar animated now={45} />;
+        </Modal.Body>
+        <Modal.Footer data-bs-theme="dark">
+          <Button onClick={props.onHide}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+    );
+  }
+
+function Simulator(){
+    
+    const [modalShow, setModalShow] = useState(false);
+
+    return (
+        <>
+            <Button variant="primary" onClick={() => setModalShow(true)}>
+                Launch vertically centered modal
+            </Button>
+
+            <SimModal
+                show={modalShow}
+                onHide={() => setModalShow(false)}
+            />
+        </>
     )
 }
 

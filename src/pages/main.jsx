@@ -9,7 +9,6 @@ function Main() {
       <NoisyNavBar />
       <header className="App-header">
         <Simulator/>
-        <Spinner animation='border' variant='secondary'/>
       </header>
     </div>
   );
