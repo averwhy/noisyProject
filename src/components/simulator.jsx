@@ -84,7 +84,7 @@ function SimModal(props) {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body data-bs-theme="dark">
-            <ProgressBar animated now={45} />;
+            <ProgressBar animated now={45} />
         </Modal.Body>
         <Modal.Footer data-bs-theme="dark">
           <Button onClick={props.onHide}>Close</Button>
