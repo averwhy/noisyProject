@@ -1,0 +1,36 @@
+.sim {
+    position: relative;
+    bottom: 10px;
+    height: 200px;
+    width: 300px;
+}
+
+.simButton{
+    position:relative;
+    bottom:30px;
+    left: 195px;
+}
+
+.simFadeIn {
+    animation: fade-in 3s;
+  }
+  
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 100;
+    }
+  }
+
+.simForm {
+    position: relative;
+    bottom: 50px;
+    width: 400px;
+    margin: auto;
+}
+
+.simFormLabel {
+    font-size: 20px;
+}

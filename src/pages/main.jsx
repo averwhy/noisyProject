@@ -5,7 +5,7 @@ import Spinner from 'react-bootstrap/Spinner';
 
 function Main() {
   return (
-    <div className="App">
+    <div>
       <NoisyNavBar />
       <header className="App-header">
         <Simulator/>

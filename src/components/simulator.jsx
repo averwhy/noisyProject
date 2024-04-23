@@ -1,7 +1,8 @@
-import Modal from 'react-bootstrap/Modal';
-import Button from 'react-bootstrap/Button';
-import { ProgressBar } from 'react-bootstrap';
-import { useState } from 'react';
+import { Card } from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
+import { Button } from 'react-bootstrap';
+import './sim.css';
+import { Component } from 'react';
 
 class noisyChannel{
     constructor(percentage){
@@ -22,6 +23,7 @@ class Channel{
 
 class Transmitter extends Channel{
     constructor(bits){
+        super();
         this.bits = bits;
         this.message = null;
     }
@@ -40,6 +42,7 @@ class Transmitter extends Channel{
 
 class Receiver extends Channel{
     constructor(){
+        super();
     }
 
     returnMessage(message){
@@ -55,7 +58,7 @@ class ChannelSimulator{
         this.tx = tx;
         this.rx = rx;
         this.noise = noise;
-        this.iterations;
+        this.iterations = iterations;
     }
 
     simulate(){
@@ -69,46 +72,57 @@ class ChannelSimulator{
     }
 }
 
-function SimModal(props) {
-    return (
-      <Modal
-        {...props}
-        data-bs-theme="dark"
-        size="xl"
-        aria-labelledby="contained-modal-title-vcenter"
-        centered
-      >
-        <Modal.Header closeButton data-bs-theme="dark">
-          <Modal.Title id="contained-modal-title-vcenter" data-bs-theme="dark">
-            Simulator
-          </Modal.Title>
-        </Modal.Header>
-        <Modal.Body data-bs-theme="dark">
-            <ProgressBar animated now={45} />
-        </Modal.Body>
-        <Modal.Footer data-bs-theme="dark">
-          <Button onClick={props.onHide}>Close</Button>
-        </Modal.Footer>
-      </Modal>
-    );
-  }
+class Simulator extends Component{
+    state = {
+        iters: 1,
+        tx: new Transmitter(10),
+        rx: new Receiver(10),
+        nx: new noisyChannel(0),
+        chSim: new ChannelSimulator(tx, rx, nx, iters),
+        doingSim: false
+    }
 
-function Simulator(){
-    
-    const [modalShow, setModalShow] = useState(false);
+    constructor(){
+        super();
+        this.simRef = React.createRef();
+    }
 
-    return (
-        <>
-            <Button variant="primary" onClick={() => setModalShow(true)}>
-                Launch vertically centered modal
-            </Button>
+    handleButton = (e) => {
+        
+    }
 
-            <SimModal
-                show={modalShow}
-                onHide={() => setModalShow(false)}
-            />
-        </>
-    )
+    handleRangeChange(){
+        this.setState(prevState => {
+            return {
+                nx: prevState.percentage = this.simRef.current.value
+            }
+        })
+    }
+
+    render(){
+        return (
+            <div>
+                <Form className='simForm'>
+                    <Form.Group controlId='noisePercentage'>
+                        <Form.Label className='simFormLabel'>Noise Percentage</Form.Label>
+                        <Form.Control ref={this.simRef}/>
+                        <Form.Range data-bs-theme="dark" onChange={handleRangeChange} />
+                    </Form.Group>
+                </Form>
+                <Button className='simButton' size='lg'>Run Simulation</Button>
+                <Card border="dark" style={{ width: '35rem' }} data-bs-theme="dark">
+                    <Card.Header>Simulator</Card.Header>
+                    <Card.Body>
+                        <Card.Title>Noise percentage: {nx.percentage}%</Card.Title>
+                        <Card.Text style={{fontSize: '25px'}}>
+                            Some quick example text to build on the card title and make up the
+                            bulk of the card's content.
+                        </Card.Text>
+                    </Card.Body>
+                </Card>
+            </div>
+        )
+    }
 }
 
 export default Simulator;
