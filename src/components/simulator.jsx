@@ -10,36 +10,39 @@ import { Badge } from 'react-bootstrap';
 class noisyChannel{
     constructor(percentage){
         this.percentage = percentage;
+        this.timesHit = 0;
     }
-
+    //Quote from the project sheet:
+    /*
+    The noisy channel randomly flips one bit in N% of the transmissions, 
+    where N is an input variable.
+    */
+    // keyword: ONE BIT
+    // So passthrough will only change one bit
     passthrough(m){
-        var rand;
-        var message = m;
-        for (var i=0; i<message.length; i++){
-            rand = Math.floor(Math.random() * 101);
-            //console.log(rand + " <= " + this.percentage + " = " + (rand<=this.percentage))
-            if (rand <= this.percentage){
-                if (message[i] == 1){
-                    message[i] = 0
-                }
-                else if (message[i] == 0){
-                    message[i] = 1
-                }
-                else {
-                    if (Math.floor(Math.random() * 101) > 50){ // 50% chance of checksum going up, or going down
-                        message[i]++;
-                    } else { message[i]-- }
-                }
-            } else {
-                continue;
+        var arr = Array.from(m);
+        const randomNumber = Math.floor(Math.random() * 101); // Generate random number between 0-100
+        if (randomNumber < this.percentage) {
+            const randomIndex = Math.floor(Math.random() * arr.length); // Select random index
+            const randomElement = arr[randomIndex]; // Get the element at the random index
+
+            if (arr[9] === 0){ this.timesHit++ } // just for stats
+            if (randomElement === 0) {
+                arr[randomIndex] = 1; // Flip 0 to 1
+            } else if (randomElement === 1) {
+                arr[randomIndex] = 0; // Flip 1 to 0
+            } else if (randomElement >= 2 && randomElement <= 9) {
+                // 50% chance of either adding 1 or subtracting 1
+                arr[randomIndex] += Math.random() < 0.5 ? 1 : -1;
             }
         }
-        return message;
+        return arr;
     }
 }
 
 class Channel{
-    checksum(msg){
+    checksum(m){
+        var msg = Array.from(m)
         let sum = msg.reduce((acc, bit) => acc + bit, 0); // Sum all bits in the data
         return sum % 10;
     }
@@ -70,9 +73,21 @@ class Receiver extends Channel{
     }
 
     returnMessage(m){ // 'recieves' and returns the message with the new checksum and flipped ack digit
-        var message = m;
+        var message = Array.from(m);
+        if (m[9] == 1){
+            // ack digit came in wrong so we ignore
+            console.log("wrong ack ignore")
+            return null;
+        }
+        if (this.checksum(m.slice(0,8)) == m[8]){
+            //the checksum is right so we ignore
+            console.log("right checksum ignore")
+            return null;
+        }
+
+        console.log("regular return")
         message[9] = 1; // Flip ack digit
-        message[8] = this.checksum(message.slice(0, 8));
+        message[8] = this.checksum(message.slice(0, 8)) + 1;
         return message;
     }
 }
@@ -83,6 +98,7 @@ class ChannelSimulator{
         trueIncorrect: 0,
         falseCorrect: 0,
         falseIncorrect: 0,
+        completeFails: 0,
         runs: 0,
         messagesSent: 0
     }
@@ -93,38 +109,75 @@ class ChannelSimulator{
         this.iterations = iterations;
     }
 
-    async simulate(){
+    simulate(){
         for (var t=0; t<this.iterations; t++){
-            await new Promise(r => setTimeout(r, 1)); // sleep for 1ms
+            //await new Promise(r => setTimeout(r, 1)); // sleep for 1ms
             console.log("run %d", this.evaluator.runs);
-            var ogMessage = this.tx.createMessage();
+            const ogMessage = Object.freeze(this.tx.createMessage());
             var garbled = this.noise.passthrough(ogMessage);
             var returned = this.rx.returnMessage(garbled);
-            var returnedMessage = this.noise.passthrough(returned);
-            console.log("ogMessage: " + ("(" + ogMessage.join(", ") + ")") + ", returnedMessage: " + ("(" + returnedMessage.join(", ") + ")"))
+            if (returned == null){
+                // either the checksum was met and it didn't have to send back, or
+                // the ack digit was wrong so it never 'recieved' it
+                if (ogMessage[8] === garbled[8]){
+                    // this means the checksum was met so RX didnt respond
+                    // was the message the same though?
+                    if (Array.from(ogMessage).slice(0, 8).every((value, index) => value === Array.from(garbled).slice(0,8)[index])){
+                        // it WAS the same
+                        this.evaluator.trueCorrect++;
+                        this.evaluator.runs++;
+                        console.log("trueCorrect (RX recieved correct checksum)")
+                        continue;
+                    }
+                    // it was NOT the same
+                    this.evaluator.falseCorrect++;
+                    this.evaluator.runs++;
+                    console.log("falseCorrect (RX recieved correct checksum but wasnt actually correct)")
+                    continue;
+                }
+                else {
+                    // this means that the ack digit was wrong, sooo we're gonna retrasmit
+                    this.evaluator.completeFails++;
+                    this.evaluator.runs++;
+                    console.log("complete fail");
+                    continue;
+                }
+            }
+            const returnedMessage = this.noise.passthrough(returned);
+            if (returnedMessage[9] === 0){
+                // because the ack is not 1, the TX channel wouldnt see it, as per instructions: 
+                // "If Tx/Rx does not receive a proper Ack after a set period of time, it retransmits the previous signal."
+                // Because time is mostly irrelevant here, we will retransmit
+                this.evaluator.completeFails++;
+                this.evaluator.runs++;
+                continue;
+            }
+            const startMsg = Array.from(ogMessage);
+            startMsg[9] = 1;
             if (
-                ogMessage.every((value, index) => value === returnedMessage[index]) &&
-                ogMessage.every((value, index) => value === garbled[index])
+                startMsg.every((value, index) => value === returnedMessage[index]) &&
+                startMsg.every((value, index) => value === garbled[index])
             ) { // trueCorrect
                 this.evaluator.trueCorrect++;
                 this.evaluator.runs++;
                 console.log("true correct");
             } else if (
-                ogMessage.every((value, index) => value === returnedMessage[index]) &&
-                !ogMessage.every((value, index) => value === garbled[index])
+                startMsg.every((value, index) => value === returnedMessage[index]) &&
+                !startMsg.every((value, index) => value !== garbled[index])
             ) {
+                this.evaluator.falseCorrect++;
                 this.evaluator.runs++;
                 console.log("false correct");
             } else if (
-                !ogMessage.every((value, index) => value === returnedMessage[index]) &&
-                !ogMessage.every((value, index) => value === garbled[index])
+                !startMsg.every((value, index) => value !== returnedMessage[index]) &&
+                !startMsg.every((value, index) => value !== garbled[index])
             ) { // trueIncorrect
                 this.evaluator.trueIncorrect++;
                 this.evaluator.runs++;
                 console.log("true incorrect");
             } else if (
-                !ogMessage.every((value, index) => value === returnedMessage[index]) &&
-                ogMessage.every((value, index) => value === garbled[index])
+                !startMsg.every((value, index) => value !== returnedMessage[index]) &&
+                startMsg.every((value, index) => value === garbled[index])
             ) { // falseIncorrect
                 this.evaluator.falseIncorrect++;
                 this.evaluator.runs++;
@@ -132,6 +185,7 @@ class ChannelSimulator{
             } else {
                 console.log("something went wrong");
             }
+            console.log("ogMessage:       " + ("(" + ogMessage.join(", ") + ")") + "\nfirst garble:    " + ("(" + garbled.join(", ") + ")") + "\nreturnedMessage: " + ("(" + returnedMessage.join(", ") + ")"))
             continue;
         }
         this.evaluator.messagesSent = this.evaluator.runs * 2;
@@ -166,16 +220,20 @@ class Simulator extends Component {
             this.state.iters
         );
         this.nx.percentage = this.state.noisePercentage;
+        this.nx.timesHit = 0;
         this.setState({ doingSim: true });
 
         if (!this.state.fadeIn) {
             this.setState({ fadeIn: true });
         }
         console.log('starting');
-        this.state.channelSim.simulate().then(() => {
-            console.log('finished');
-            this.setState({doingSim: false});
-        })
+        //this.state.channelSim.simulate().then(() => {
+        //    console.log('finished');
+        //    this.setState({doingSim: false});
+        //})
+        this.state.channelSim.simulate()
+        this.setState({doingSim: false});
+        console.log("finished");
     }
 
     handleRangeChange(e) {
@@ -197,12 +255,13 @@ class Simulator extends Component {
                 <Card className={fadeIn ? 'simFadeIn' : 'simInvis'} border={doingSim ? 'warning' : 'success'} style={{ width: '35rem' }} data-bs-theme="dark">
                     <Card.Header>Simulator <Badge bg={doingSim ? 'warning' : 'success'}> Run #{this.state.channelSim.evaluator.runs}</Badge></Card.Header>
                     <Card.Body>
-                        <Card.Title style={{ fontSize: '15px' }}>Noise percentage: <Badge bg="secondary">{noisePercentage}%</Badge></Card.Title>
+                        <Card.Title style={{ fontSize: '15px' }}>Noise percentage: <Badge bg="primary">{noisePercentage}%</Badge> # of times noise garbled something: <Badge bg="secondary">{this.nx.timesHit}</Badge></Card.Title>
                         <ListGroup variant="flush" style={{ fontSize: '17px' }}>
                             <ListGroup.Item>True Correct: <Badge bg="secondary">{this.state.channelSim.evaluator.trueCorrect}</Badge></ListGroup.Item>
                             <ListGroup.Item>True Incorrect: <Badge bg="secondary">{this.state.channelSim.evaluator.trueIncorrect}</Badge></ListGroup.Item>
                             <ListGroup.Item>False Correct: <Badge bg="secondary">{this.state.channelSim.evaluator.falseCorrect}</Badge></ListGroup.Item>
                             <ListGroup.Item>False Incorrect: <Badge bg="secondary">{this.state.channelSim.evaluator.falseIncorrect}</Badge></ListGroup.Item>
+                            <ListGroup.Item>Transmission fails: <Badge bg="secondary">{this.state.channelSim.evaluator.completeFails}</Badge></ListGroup.Item>
                         </ListGroup>
                     </Card.Body>
                 </Card>
