@@ -22,7 +22,7 @@ class noisyChannel{
     passthrough(m){
         var arr = Array.from(m);
         const randomNumber = Math.floor(Math.random() * 101); // Generate random number between 0-100
-        if (randomNumber < this.percentage) {
+        if (randomNumber < this.percentage || this.percentage == 100) {
             const randomIndex = Math.floor(Math.random() * arr.length); // Select random index
             const randomElement = arr[randomIndex]; // Get the element at the random index
 
@@ -36,6 +36,7 @@ class noisyChannel{
                 arr[randomIndex] += Math.random() < 0.5 ? 1 : -1;
             }
         }
+        else { console.log("nah lol") }
         return arr;
     }
 }
@@ -74,18 +75,15 @@ class Receiver extends Channel{
 
     returnMessage(m){ // 'recieves' and returns the message with the new checksum and flipped ack digit
         var message = Array.from(m);
-        if (m[9] == 1){
+        if (m[9] === 1){
             // ack digit came in wrong so we ignore
-            console.log("wrong ack ignore")
             return null;
         }
-        if (this.checksum(m.slice(0,8)) == m[8]){
+        if (this.checksum(m.slice(0,8)) === m[8]){
             //the checksum is right so we ignore
-            console.log("right checksum ignore")
             return null;
         }
 
-        console.log("regular return")
         message[9] = 1; // Flip ack digit
         message[8] = this.checksum(message.slice(0, 8)) + 1;
         return message;
@@ -102,25 +100,29 @@ class ChannelSimulator{
         runs: 0,
         messagesSent: 0
     }
-    constructor(tx, rx, noise, iterations){
+    constructor(tx, rx, noise, iterations, callback){
         this.tx = tx;
         this.rx = rx;
         this.noise = noise;
         this.iterations = iterations;
+        // for refreshing component
+        this.updateStateCallback = callback;
     }
 
-    simulate(){
+    async simulate(){
         for (var t=0; t<this.iterations; t++){
-            //await new Promise(r => setTimeout(r, 1)); // sleep for 1ms
-            console.log("run %d", this.evaluator.runs);
+            await new Promise(r => setTimeout(r, 1)); // sleep for 1ms
+            if (this.updateStateCallback) { this.updateStateCallback() }
+            //console.log("run %d", this.evaluator.runs);
             const ogMessage = Object.freeze(this.tx.createMessage());
             var garbled = this.noise.passthrough(ogMessage);
             var returned = this.rx.returnMessage(garbled);
             if (returned == null){
+                console.log("ogMessage:       " + ("(" + ogMessage.join(", ") + ")") + "\nfirst garble:    " + ("(" + garbled.join(", ") + ")"));
                 // either the checksum was met and it didn't have to send back, or
                 // the ack digit was wrong so it never 'recieved' it
-                if (ogMessage[8] === garbled[8]){
-                    // this means the checksum was met so RX didnt respond
+                if (ogMessage[8] === garbled[8] && Array.from(ogMessage)[9] === Array.from(garbled)[9]){
+                    // this means the checksum was met & ack was right so RX didnt respond
                     // was the message the same though?
                     if (Array.from(ogMessage).slice(0, 8).every((value, index) => value === Array.from(garbled).slice(0,8)[index])){
                         // it WAS the same
@@ -136,10 +138,10 @@ class ChannelSimulator{
                     continue;
                 }
                 else {
-                    // this means that the ack digit was wrong, sooo we're gonna retrasmit
+                    // this means that the ack digit was recieved wrong, sooo we're gonna retrasmit
                     this.evaluator.completeFails++;
                     this.evaluator.runs++;
-                    console.log("complete fail");
+                    console.log("complete fail, RX recieved wrong ack");
                     continue;
                 }
             }
@@ -148,6 +150,7 @@ class ChannelSimulator{
                 // because the ack is not 1, the TX channel wouldnt see it, as per instructions: 
                 // "If Tx/Rx does not receive a proper Ack after a set period of time, it retransmits the previous signal."
                 // Because time is mostly irrelevant here, we will retransmit
+                console.log("complete fail bc tx cant see returned msg")
                 this.evaluator.completeFails++;
                 this.evaluator.runs++;
                 continue;
@@ -212,12 +215,22 @@ class Simulator extends Component {
         this.nx = new noisyChannel(this.state.noisePercentage);
     }
 
+    updateStateCallback = () => {
+        this.setState(prevState => ({
+            channelSim: {
+                ...prevState.channelSim,
+            }
+        }));
+    }
+
+
     handleButton = (e) => {
         this.state.channelSim = new ChannelSimulator(
             this.tx, 
             this.rx, 
             this.nx, 
-            this.state.iters
+            this.state.iters,
+            this.updateStateCallback
         );
         this.nx.percentage = this.state.noisePercentage;
         this.nx.timesHit = 0;
@@ -227,13 +240,14 @@ class Simulator extends Component {
             this.setState({ fadeIn: true });
         }
         console.log('starting');
-        //this.state.channelSim.simulate().then(() => {
-        //    console.log('finished');
-        //    this.setState({doingSim: false});
-        //})
-        this.state.channelSim.simulate()
-        this.setState({doingSim: false});
-        console.log("finished");
+
+        this.state.channelSim.simulate(this.state.channelSim.updateStateCallback).then(() => {
+            console.log('finished');
+            this.setState({ doingSim: false });
+        });
+        // this.state.channelSim.simulate()
+        // this.setState({doingSim: false});
+        // console.log("finished");
     }
 
     handleRangeChange(e) {
@@ -247,7 +261,7 @@ class Simulator extends Component {
             <div>
                 <Form className='simForm'>
                     <Form.Group controlId='noisePercentage'>
-                        <Form.Label className='simFormLabel'>Noise Percentage</Form.Label>
+                        <Form.Label className='simFormLabel'>Noise Percentage <Badge bg="free-palestine">{noisePercentage}%</Badge></Form.Label>
                         <Form.Range data-bs-theme="dark" value={noisePercentage} onChange={this.handleRangeChange} disabled={doingSim} />
                     </Form.Group>
                 </Form>
@@ -255,7 +269,7 @@ class Simulator extends Component {
                 <Card className={fadeIn ? 'simFadeIn' : 'simInvis'} border={doingSim ? 'warning' : 'success'} style={{ width: '35rem' }} data-bs-theme="dark">
                     <Card.Header>Simulator <Badge bg={doingSim ? 'warning' : 'success'}> Run #{this.state.channelSim.evaluator.runs}</Badge></Card.Header>
                     <Card.Body>
-                        <Card.Title style={{ fontSize: '15px' }}>Noise percentage: <Badge bg="primary">{noisePercentage}%</Badge> # of times noise garbled something: <Badge bg="secondary">{this.nx.timesHit}</Badge></Card.Title>
+                        <Card.Title style={{ fontSize: '15px' }}>Noise percentage: <Badge bg="primary">{noisePercentage}%</Badge>   Noise garbles: <Badge bg="secondary">{this.nx.timesHit}</Badge></Card.Title>
                         <ListGroup variant="flush" style={{ fontSize: '17px' }}>
                             <ListGroup.Item>True Correct: <Badge bg="secondary">{this.state.channelSim.evaluator.trueCorrect}</Badge></ListGroup.Item>
                             <ListGroup.Item>True Incorrect: <Badge bg="secondary">{this.state.channelSim.evaluator.trueIncorrect}</Badge></ListGroup.Item>
