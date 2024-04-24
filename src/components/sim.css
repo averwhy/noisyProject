@@ -12,7 +12,7 @@
 }
 
 .simFadeIn {
-    animation: fade-in 3s;
+    animation: fade-in 1s;
   }
   
   @keyframes fade-in {
@@ -23,6 +23,10 @@
       opacity: 100;
     }
   }
+
+.simInvis {
+  opacity: 0;
+}
 
 .simForm {
     position: relative;
